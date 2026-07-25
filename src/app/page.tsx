@@ -237,6 +237,7 @@ export default function AvatarTrainingRoom() {
         audioCtxRef.current = new Ctx();
       }
       const ctx = audioCtxRef.current;
+      if (!ctx) return;
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
       oscillator.type = 'sine';
