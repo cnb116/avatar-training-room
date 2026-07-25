@@ -116,7 +116,7 @@ const FALLBACK_SITUATIONS: Situation[] = [
   { level: '매운맛', line: '그렇게 잘났으면 혼자 다 해보든가.' },
   { level: '매운맛', line: '이건 토론할 문제가 아니라 그냥 요청이잖아요, 좀 해주세요.' },
   { level: '매운맛', line: '저희가 낸 돈인데 왜 저희 말을 안 들으세요?' },
-  { level: '매운맛', line: '그렇게 잘 아하시면 왜 저희 말대로 안 해주세요?' },
+  { level: '매운맛', line: '그렇게 잘 아시면 왜 저희 말대로 안 해주세요?' },
   { level: '매운맛', line: '몇 번을 말씀드려야 알아들으세요, 그냥 좀 맞춰주세요.' },
   { level: '매운맛', line: '다들 참는데 왜 그 현장만 계속 고집을 부리세요.' },
   { level: '매운맛', line: '이건 부탁이 아니라 그냥 지켜달라는 거예요.' },
@@ -234,10 +234,9 @@ export default function AvatarTrainingRoom() {
     try {
       if (!audioCtxRef.current) {
         const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (Ctx) audioCtxRef.current = new Ctx();
+        audioCtxRef.current = new Ctx();
       }
       const ctx = audioCtxRef.current;
-      if (!ctx) return;
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
       oscillator.type = 'sine';
@@ -297,6 +296,29 @@ export default function AvatarTrainingRoom() {
       recognitionRef.current = recognition;
     }
   }, []);
+
+  // savedLines가 바뀔 때마다, gongguri.com 홈에서도 읽을 수 있도록
+  // .gongguri.com 전체 도메인 범위 쿠키에 '요약 정보'만 저장한다.
+  // (LocalStorage는 서브도메인끼리 공유되지 않기 때문에 쿠키를 씀)
+  useEffect(() => {
+    try {
+      const stats = computeRecentAverage(savedLines, 10);
+      if (!stats) return; // 기록이 없으면 굳이 쿠키를 안 씀
+
+      const payload = JSON.stringify({
+        avg: stats.average,
+        count: stats.count,
+        rank: getOverallRank(stats.average),
+      });
+
+      const maxAgeSeconds = 60 * 60 * 24 * 400; // 약 400일 보관
+      document.cookie =
+        `gongguri_mental_rank=${encodeURIComponent(payload)}; ` +
+        `domain=.gongguri.com; path=/; max-age=${maxAgeSeconds}; SameSite=Lax; Secure`;
+    } catch {
+      // 쿠키 저장 실패는 핵심 기능에 영향 없으므로 무시 (우회 공법)
+    }
+  }, [savedLines]);
 
   function toggleMic() {
     if (!recognitionRef.current) return;
